@@ -33,6 +33,11 @@ export const SyncStatus = () => {
 
   let tooltipContent: ReactNode = <>Up-to-date</>
 
+  if (pendingCount) {
+    icon = <CloudIcon className="size-5 text-muted-foreground pointer-events-none" />
+    tooltipContent = <ChangesPreview pendingPreviews={pendingPreviews} />
+  }
+
   if (isChecking) {
     icon = (
       <CloudIcon
@@ -41,11 +46,6 @@ export const SyncStatus = () => {
       />
     )
     tooltipContent = <>Checking for changes...</>
-  }
-
-  if (pendingCount) {
-    icon = <CloudIcon className="size-5 text-muted-foreground pointer-events-none" />
-    tooltipContent = <ChangesPreview pendingPreviews={pendingPreviews} />
   }
 
   if (isSyncing || isForcingSync) {
@@ -80,7 +80,9 @@ export const SyncStatus = () => {
       className="relative focus-visible:ring-0"
       onClick={() => void handleSyncNow()}
     >
-      <div style={{ animation: "scale-in 0.15s ease-out" }}>{icon}</div>
+      <div style={{ animation: "scale-in 0.15s ease-out" }} className="pointer-events-none">
+        {icon}
+      </div>
 
       {!!pendingCount && <DiffCounterBadge count={pendingCount} />}
     </Button>
