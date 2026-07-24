@@ -3,7 +3,7 @@ import { RRule, RRuleSet } from "rrule"
 import { AllDayCheckbox } from "@/components/event-parts/inputs/AllDayCheckbox"
 import { AttendeesDisplay } from "@/components/event-parts/inputs/AttendeesDisplay"
 import { CalendarSelect } from "@/components/event-parts/inputs/CalendarSelect"
-import { ConferenceLink } from "@/components/event-parts/inputs/ConferenceLink"
+import { ConferenceDisplay } from "@/components/event-parts/inputs/ConferenceDisplay"
 import { DateTimeSelect, type DateTimeRange } from "@/components/event-parts/inputs/DateTimeSelect"
 import { LocationInput } from "@/components/event-parts/inputs/LocationInput"
 import { ReminderSelect } from "@/components/event-parts/inputs/ReminderSelect"
@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea"
 
 import type { Calendar, EventAttendee, ResponseStatus } from "@/rpc/bindings"
 
+import type { EventConference } from "@/lib/conference"
 import type { EventTime } from "@/lib/event-time"
 import { cn } from "@/lib/utils"
 
@@ -47,7 +48,8 @@ export function EventInfo({
   organizer,
   attendees,
   onAttendeesChange,
-  conferenceUrl,
+  conference,
+  onConferenceChange,
   reminders,
   onReminderAdd,
   onReminderRemove,
@@ -78,7 +80,8 @@ export function EventInfo({
   organizer?: EventAttendee | null
   attendees?: EventAttendee[]
   onAttendeesChange?: (attendees: EventAttendee[]) => void
-  conferenceUrl?: string | null
+  conference?: EventConference | null
+  onConferenceChange?: (conference: EventConference | null) => void
   reminders?: number[]
   onReminderAdd: (mins: number) => void
   onReminderRemove: (mins: number) => void
@@ -127,7 +130,12 @@ export function EventInfo({
 
         <RepeatSelect value={recurrence} onChange={onRecurrenceChange} readOnly={readonly} />
 
-        {conferenceUrl && <ConferenceLink url={conferenceUrl} />}
+        <ConferenceDisplay
+          conference={conference}
+          calendar={calendar}
+          readonly={readonly}
+          onConferenceChange={onConferenceChange}
+        />
 
         {(!!attendees?.length || !readonly) && (
           <>

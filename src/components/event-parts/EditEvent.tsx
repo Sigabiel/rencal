@@ -22,6 +22,7 @@ import { useSync } from "@/contexts/SyncContext"
 import { useDeleteEvent } from "@/hooks/useDeleteEvent"
 import { useLastTimedRange } from "@/hooks/useLastTimedRange"
 import { withDates, type CalendarEvent } from "@/lib/cal-events"
+import { conferenceForCalendar } from "@/lib/conference"
 import {
   addMinutes,
   DEFAULT_DURATION_MINS,
@@ -208,14 +209,22 @@ export const EditEvent = ({
         }}
         calendar={calendar}
         onCalendarChange={(newCalendarId) => {
-          setDirtyEvent({ ...dirtyEvent, calendar_slug: newCalendarId })
+          const newCalendar = calendars.find((candidate) => candidate.slug === newCalendarId)
+          setDirtyEvent({
+            ...dirtyEvent,
+            calendar_slug: newCalendarId,
+            conference: conferenceForCalendar(dirtyEvent.conference, newCalendar),
+          })
         }}
         organizer={dirtyEvent.organizer}
         attendees={dirtyEvent.attendees}
         onAttendeesChange={(newAttendees) => {
           setDirtyEvent({ ...dirtyEvent, attendees: newAttendees })
         }}
-        conferenceUrl={dirtyEvent.conference_url}
+        conference={dirtyEvent.conference}
+        onConferenceChange={(conference) => {
+          setDirtyEvent({ ...dirtyEvent, conference })
+        }}
         recurrence={recurrenceRRule}
         onRecurrenceChange={handleRecurrenceChange}
         reminders={dirtyEvent.reminders}

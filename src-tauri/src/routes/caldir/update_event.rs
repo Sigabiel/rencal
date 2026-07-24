@@ -1,3 +1,4 @@
+use super::conference::apply_conference;
 use super::helpers::load_caldir;
 use super::types::{UpdateEventInput, rpc_recurrence_to_core, rpc_time_to_core};
 use crate::event_cache::EVENT_CACHE;
@@ -48,6 +49,7 @@ pub(super) async fn handler(input: UpdateEventInput) -> TauResult<()> {
                 event.end = Some(end);
                 event.reminders = input_reminders;
                 event.attendees = input_attendees;
+                apply_conference(event, &calendar, input.conference.as_ref());
             })
             .map_err(|e| e.to_string())?;
 
@@ -82,6 +84,11 @@ pub(super) async fn handler(input: UpdateEventInput) -> TauResult<()> {
         if moving {
             let new_slug = input.new_calendar_slug.as_ref().unwrap();
             let target_calendar = caldir.calendar(new_slug).map_err(|e| e.to_string())?;
+            apply_conference(
+                &mut updated_event,
+                &target_calendar,
+                input.conference.as_ref(),
+            );
 
             // New UID so remote providers treat it as a fresh event
             let moved_event = updated_event.with_new_uid();
@@ -99,6 +106,7 @@ pub(super) async fn handler(input: UpdateEventInput) -> TauResult<()> {
             EVENT_CACHE.invalidate(&input.calendar_slug);
             EVENT_CACHE.invalidate(new_slug);
         } else {
+            apply_conference(&mut updated_event, &calendar, input.conference.as_ref());
             existing_calendar_event
                 .update(updated_event)
                 .map_err(|e| e.to_string())?;

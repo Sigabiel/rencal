@@ -18,6 +18,7 @@ import {
   recurrenceToRpc,
   rpcToCalendarEvent,
 } from "@/lib/cal-events"
+import { conferenceToRpc, type EventConference } from "@/lib/conference"
 import {
   addMinutes,
   computeEventDateInfo,
@@ -34,7 +35,7 @@ import { useCalendars } from "./CalendarStateContext"
 import { useSettings } from "./SettingsContext"
 import { useSync } from "./SyncContext"
 
-interface DraftEvent {
+export interface DraftEvent {
   summary: string
   description: string | null
   start: EventTime
@@ -43,6 +44,7 @@ interface DraftEvent {
   location: string | null
   recurrence: Recurrence | null
   attendees: EventAttendee[]
+  conference: EventConference | null
 }
 
 interface EventTextContextType {
@@ -123,6 +125,7 @@ export function EventDraftProvider({ children }: { children: ReactNode }) {
       location: null,
       recurrence: null,
       attendees: [],
+      conference: null,
     }
   }, [defaultCalendarId])
 
@@ -201,7 +204,7 @@ export function EventDraftProvider({ children }: { children: ReactNode }) {
       reminders: draftReminders,
       organizer: null,
       attendees: draftEvent.attendees,
-      conference_url: null,
+      conference: draftEvent.conference,
       calendar_slug: draftEvent.calendarId,
       color: null,
       updated: null,
@@ -222,6 +225,7 @@ export function EventDraftProvider({ children }: { children: ReactNode }) {
       recurrence: draftEvent.recurrence ? recurrenceToRpc(draftEvent.recurrence) : null,
       reminders: draftReminders,
       attendees: draftEvent.attendees,
+      conference: conferenceToRpc(draftEvent.conference),
     })
 
     if (draftEvent.recurrence) {

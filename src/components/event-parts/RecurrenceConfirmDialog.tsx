@@ -23,7 +23,7 @@ export function RecurrenceConfirmDialog({
 }) {
   return (
     <Dialog open={isOpen} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Edit recurring event</DialogTitle>
           <DialogDescription>This event is part of a recurring series.</DialogDescription>
@@ -33,7 +33,7 @@ export function RecurrenceConfirmDialog({
             Only this event
           </Button>
           <Button variant="outline" onClick={onApplyToFuture}>
-            This and all future events
+            This and future events
           </Button>
           <Button onClick={onApplyToAll}>All events</Button>
         </DialogFooter>
