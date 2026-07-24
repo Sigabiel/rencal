@@ -551,7 +551,9 @@ dependencies = [
 
 [[package]]
 name = "caldir-core"
-version = "0.12.0"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "febb8559fc211f1c006163040140a4bd2fa09ae069ee599e8baeddf27c40cd20"
 dependencies = [
  "async-trait",
  "chrono",
