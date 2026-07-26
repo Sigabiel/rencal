@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest"
 import {
   addDays,
   addMinutes,
+  coversFullDay,
   enumerateLocalDateKeys,
   formatDateKey,
   getEventDayRange,
@@ -258,11 +259,34 @@ describe("normalizeAllDayRange", () => {
 })
 
 describe("enumerateLocalDateKeys", () => {
-  it("timed event yields a single key", () => {
+  it("single-day timed event yields a single key", () => {
     const tz = getLocalTzid()
     const start = zoned("2026-04-28T09:00:00", tz)
     const end = zoned("2026-04-28T10:00:00", tz)
     expect(Array.from(enumerateLocalDateKeys(start, end))).toEqual(["2026-04-28"])
+  })
+
+  it("multi-day timed event enumerates every occupied day", () => {
+    const tz = getLocalTzid()
+    const start = zoned("2026-04-28T19:00:00", tz)
+    const end = zoned("2026-05-01T05:00:00", tz)
+    expect(Array.from(enumerateLocalDateKeys(start, end))).toEqual([
+      "2026-04-28",
+      "2026-04-29",
+      "2026-04-30",
+      "2026-05-01",
+    ])
+  })
+
+  it("timed event ending at midnight excludes the end date", () => {
+    const tz = getLocalTzid()
+    const start = zoned("2026-04-28T19:00:00", tz)
+    const end = zoned("2026-05-01T00:00:00", tz)
+    expect(Array.from(enumerateLocalDateKeys(start, end))).toEqual([
+      "2026-04-28",
+      "2026-04-29",
+      "2026-04-30",
+    ])
   })
 
   it("all-day three-day enumerates start through end-exclusive", () => {
@@ -279,6 +303,52 @@ describe("enumerateLocalDateKeys", () => {
     const start = date("2026-04-28")
     const end = date("2026-04-28")
     expect(Array.from(enumerateLocalDateKeys(start, end))).toEqual(["2026-04-28"])
+  })
+})
+
+describe("coversFullDay", () => {
+  const timed = (start: string, end: string) => {
+    const tz = getLocalTzid()
+    return [zoned(start, tz), zoned(end, tz)] as const
+  }
+
+  it("is false for single-day and overnight partial events", () => {
+    const [start, end] = timed("2026-07-24T19:00:00", "2026-07-24T21:00:00")
+    expect(coversFullDay(start, end, "2026-07-24")).toBe(false)
+
+    const [oStart, oEnd] = timed("2026-07-24T19:00:00", "2026-07-25T05:00:00")
+    expect(coversFullDay(oStart, oEnd, "2026-07-24")).toBe(false)
+    expect(coversFullDay(oStart, oEnd, "2026-07-25")).toBe(false)
+  })
+
+  it("is true only for the fully covered middle days of a multi-day event", () => {
+    const [start, end] = timed("2026-07-24T19:00:00", "2026-07-27T05:00:00")
+    expect(coversFullDay(start, end, "2026-07-24")).toBe(false)
+    expect(coversFullDay(start, end, "2026-07-25")).toBe(true)
+    expect(coversFullDay(start, end, "2026-07-26")).toBe(true)
+    expect(coversFullDay(start, end, "2026-07-27")).toBe(false)
+  })
+
+  it("treats boundary days starting or ending exactly at midnight as covered", () => {
+    const [aStart, aEnd] = timed("2026-07-24T00:00:00", "2026-07-25T05:00:00")
+    expect(coversFullDay(aStart, aEnd, "2026-07-24")).toBe(true)
+    expect(coversFullDay(aStart, aEnd, "2026-07-25")).toBe(false)
+
+    const [bStart, bEnd] = timed("2026-07-24T19:00:00", "2026-07-26T00:00:00")
+    expect(coversFullDay(bStart, bEnd, "2026-07-24")).toBe(false)
+    expect(coversFullDay(bStart, bEnd, "2026-07-25")).toBe(true)
+
+    const [cStart, cEnd] = timed("2026-07-24T00:00:00", "2026-07-25T00:00:00")
+    expect(coversFullDay(cStart, cEnd, "2026-07-24")).toBe(true)
+  })
+
+  it("stays partial when a partial event ends at the next midnight", () => {
+    const [start, end] = timed("2026-07-24T19:00:00", "2026-07-25T00:00:00")
+    expect(coversFullDay(start, end, "2026-07-24")).toBe(false)
+  })
+
+  it("is true for all-day events on the days they occupy", () => {
+    expect(coversFullDay(date("2026-07-24"), date("2026-07-25"), "2026-07-24")).toBe(true)
   })
 })
 

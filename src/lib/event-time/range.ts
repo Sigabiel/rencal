@@ -1,10 +1,15 @@
 import { Temporal } from "@js-temporal/polyfill"
 
 import { allDayDate } from "./constructors"
-import { formatDateKey } from "./display"
 import { addDays, addMinutes, dateInEventZone, withEventDate, withWallclockTime } from "./edit"
 import { startOfDayMs } from "./layout"
-import { instantForOrdering, isAllDay } from "./projections"
+import { getLocalTzid } from "./local-zone"
+import {
+  dateInViewerZone,
+  instantForOrdering,
+  isAllDay,
+  toViewerZonedDateTime,
+} from "./projections"
 import type { EventTime, EventTimeRange } from "./types"
 
 /**
@@ -17,28 +22,50 @@ export function normalizeAllDayRange(start: EventTime, end: EventTime): EventTim
 }
 
 /**
- * The viewer-local date keys (YYYY-MM-DD) this event occupies. For timed
- * events that is a single key. For all-day events that is start inclusive
- * through end exclusive, following iCalendar's DTEND convention.
+ * The viewer-local date keys (YYYY-MM-DD) this event occupies. The end is
+ * exclusive, so a timed event ending exactly at midnight does not occupy that
+ * new day, and an all-day event stops before its DTEND date.
  */
 export function* enumerateLocalDateKeys(start: EventTime, end: EventTime): Generator<string> {
-  if (!isAllDay(start)) {
-    yield formatDateKey(start)
-    return
+  const firstDate = dateInViewerZone(start)
+  let lastDate = dateInViewerZone(end)
+  const endIsExclusiveDate =
+    isAllDay(start) ||
+    toViewerZonedDateTime(end).toPlainTime().equals(Temporal.PlainTime.from("00:00"))
+
+  if (endIsExclusiveDate && Temporal.PlainDate.compare(lastDate, firstDate) > 0) {
+    lastDate = lastDate.subtract({ days: 1 })
+  }
+  if (Temporal.PlainDate.compare(lastDate, firstDate) < 0) {
+    lastDate = firstDate
   }
 
-  const startKey = formatDateKey(start)
-  const endKey = formatDateKey(end)
-  if (startKey >= endKey) {
-    yield startKey
-    return
+  let current = firstDate
+  while (Temporal.PlainDate.compare(current, lastDate) <= 0) {
+    yield current.toString()
+    current = current.add({ days: 1 })
   }
+}
 
-  let current: EventTime = start
-  while (formatDateKey(current) < endKey) {
-    yield formatDateKey(current)
-    current = addDays(current, 1)
-  }
+/**
+ * Whether the event covers the given viewer-local day from midnight to
+ * midnight. All-day events cover every day they occupy; a timed event covers
+ * a day fully only when its span passes over that day without starting or
+ * ending mid-day. Assumes dateKey is a day the event occupies (as enumerated
+ * by enumerateLocalDateKeys).
+ */
+export function coversFullDay(start: EventTime, end: EventTime, dateKey: string): boolean {
+  if (isAllDay(start)) return true
+
+  const day = Temporal.PlainDate.from(dateKey)
+  const tzid = getLocalTzid()
+  const dayStartMs = day.toZonedDateTime(tzid).epochMilliseconds
+  const nextDayStartMs = day.add({ days: 1 }).toZonedDateTime(tzid).epochMilliseconds
+
+  return (
+    instantForOrdering(start).epochMilliseconds <= dayStartMs &&
+    instantForOrdering(end).epochMilliseconds >= nextDayStartMs
+  )
 }
 
 export function withRangeStartWallclockTime(

@@ -14,7 +14,7 @@ import { useCalendarNavigation } from "@/contexts/CalendarStateContext"
 import { eventKey, type CalendarEvent } from "@/lib/cal-events"
 import { getCalendarColor } from "@/lib/calendar-styles"
 import { setEventAnchor } from "@/lib/event-anchor"
-import { formatDateKey, getRelativeDayLabel, isAllDay } from "@/lib/event-time"
+import { coversFullDay, formatDateKey, getRelativeDayLabel } from "@/lib/event-time"
 import { isDeclinedEvent, isEventReadonly, isPendingEvent } from "@/lib/event-utils"
 import { cn } from "@/lib/utils"
 
@@ -107,8 +107,10 @@ export const DaySection = forwardRef<
     }
   }
 
-  const allDayEvents = events.filter((e) => isAllDay(e.start))
-  const timedEvents = events.filter((e) => !isAllDay(e.start))
+  // A timed event that covers this entire day (e.g. the middle of a
+  // multi-day span) is shown as an all-day chip, not a timed row.
+  const allDayEvents = events.filter((e) => coversFullDay(e.start, e.end, dateKey))
+  const timedEvents = events.filter((e) => !coversFullDay(e.start, e.end, dateKey))
 
   return (
     <div ref={ref} data-date={dateKey} className="relative border-b border-b-divider">
@@ -250,7 +252,7 @@ const TimedRow = ({ event, dateKey, state, ...handlers }: RowProps) => {
       })}
       {...handlers}
     >
-      <AgendaTimedEventBlock event={event} calendarColor={calendarColor} />
+      <AgendaTimedEventBlock event={event} calendarColor={calendarColor} dateKey={dateKey} />
     </AgendaEventRowShell>
   )
 }
