@@ -8,6 +8,7 @@ import type { Calendar } from "@/rpc/bindings"
 import {
   calendarConferenceProvider,
   conferenceLabel,
+  detectConference,
   type ConferenceProvider,
   type EventConference,
 } from "@/lib/conference"
@@ -25,17 +26,21 @@ const conferenceIcon: Record<ConferenceProvider, React.ComponentType<{ className
 
 export function ConferenceDisplay({
   conference,
+  location,
   calendar,
   readonly,
   onConferenceChange,
 }: {
   conference?: EventConference | null
+  location?: string | null
   calendar?: Calendar
   readonly?: boolean
   onConferenceChange?: (conference: EventConference | null) => void
 }) {
   if (conference?.status === "live") {
-    return <ConferenceLink conference={conference} />
+    const label = conferenceLabel[conference.provider]
+
+    return <ConferenceLink url={conference.url} label={label} />
   }
 
   if (conference?.status === "requested") {
@@ -46,6 +51,13 @@ export function ConferenceDisplay({
         onRemove={onConferenceChange ? () => onConferenceChange(null) : undefined}
       />
     )
+  }
+
+  // Conference links detected in event's "Location" field:
+  const detected = detectConference(location)
+
+  if (detected) {
+    return <ConferenceLink url={detected.url} label={detected.label} />
   }
 
   const conferenceProvider = calendarConferenceProvider(calendar)
@@ -62,18 +74,14 @@ export function ConferenceDisplay({
   return null
 }
 
-function ConferenceLink({
-  conference,
-}: {
-  conference: Extract<EventConference, { status: "live" }>
-}) {
+function ConferenceLink({ url, label }: { url: string; label: string }) {
   return (
     <div className="flex flex-col gap-1 px-3 py-1">
-      <Button className="w-full" onClick={() => openUrl(conference.url)}>
+      <Button className="w-full" onClick={() => openUrl(url)}>
         <VideoIcon />
-        Join {conferenceLabel[conference.provider]}
+        Join {label}
       </Button>
-      <span className="text-xs text-muted-foreground truncate px-1">{conference.url}</span>
+      <span className="text-xs text-muted-foreground truncate px-1">{url}</span>
     </div>
   )
 }
