@@ -14,7 +14,6 @@ import type { Calendar, EventAttendee, ResponseStatus } from "@/rpc/bindings"
 
 import type { EventConference } from "@/lib/conference"
 import type { EventTime } from "@/lib/event-time"
-import { cn } from "@/lib/utils"
 
 import { NotesInput } from "./inputs/NotesInput"
 import { RsvpBar } from "./inputs/RsvpBar"
@@ -87,40 +86,48 @@ export function EventInfo({
   userResponseStatus?: ResponseStatus | null
   isPendingInvite?: boolean
 }) {
+  const canEdit = !readonly
+
   return (
     <div className="flex flex-col gap-1 grow">
-      <div className="flex min-h-control-height items-center">
-        <Textarea
-          ref={summaryRef}
-          placeholder="Event Title"
-          value={summary ?? ""}
-          className={cn(
-            "text-base font-medium",
-            readonly && "hover:border-transparent! focus:bg-transparent!",
-          )}
-          readOnly={readonly}
-          onChange={(e) => onChangeSummary(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault()
-              onClose?.()
-            }
-          }}
-        />
-      </div>
+      {(canEdit || !!summary?.trim()) && (
+        <div className="flex min-h-control-height items-center">
+          <Textarea
+            ref={summaryRef}
+            placeholder="Event Title"
+            value={summary ?? ""}
+            className="text-base font-medium"
+            readOnly={readonly}
+            onChange={(e) => onChangeSummary(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault()
+                onClose?.()
+              }
+            }}
+          />
+        </div>
+      )}
 
       <div className="flex flex-col gap-1">
-        <LocationInput
-          value={location}
-          onChange={onLocationChange}
-          onClose={onClose}
-          readOnly={readonly}
-        />
+        {(canEdit || !!location?.trim()) && (
+          <LocationInput
+            value={location}
+            onChange={onLocationChange}
+            onClose={onClose}
+            readOnly={readonly}
+          />
+        )}
 
         <DateTimeSelect start={start} end={end} readOnly={readonly} onChange={onChangeDateTime} />
-        <AllDayCheckbox checked={allDay} onCheckedChange={onAllDayChange} readOnly={readonly} />
 
-        <RepeatSelect value={recurrence} onChange={onRecurrenceChange} readOnly={readonly} />
+        {(canEdit || allDay) && (
+          <AllDayCheckbox checked={allDay} onCheckedChange={onAllDayChange} readOnly={readonly} />
+        )}
+
+        {(canEdit || recurrence) && (
+          <RepeatSelect value={recurrence} onChange={onRecurrenceChange} readOnly={readonly} />
+        )}
 
         <ConferenceDisplay
           conference={conference}
@@ -130,7 +137,7 @@ export function EventInfo({
           onConferenceChange={onConferenceChange}
         />
 
-        {(!!attendees?.length || !readonly) && (
+        {(!!attendees?.length || canEdit) && (
           <>
             {!!attendees?.length && <Divider />}
 
@@ -145,17 +152,17 @@ export function EventInfo({
           </>
         )}
 
-        {!calendar?.read_only && (
-          <ReminderSelect
-            reminders={reminders ?? []}
-            onSelect={onReminderAdd}
-            onRemove={onReminderRemove}
-          />
-        )}
+        <ReminderSelect
+          reminders={reminders ?? []}
+          onSelect={onReminderAdd}
+          onRemove={onReminderRemove}
+        />
 
         <CalendarSelect calendar={calendar} onChange={onCalendarChange} readOnly={readonly} />
 
-        <NotesInput value={description} onChange={onDescriptionChange} readOnly={readonly} />
+        {(canEdit || !!description?.trim()) && (
+          <NotesInput value={description} onChange={onDescriptionChange} readOnly={readonly} />
+        )}
 
         {onRsvp && (
           <>
