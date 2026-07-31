@@ -16,7 +16,7 @@ export function SearchResultEventBlock({
     <>
       <div className="w-[3px] self-stretch shrink-0" style={{ backgroundColor: color }} />
       <div className="min-w-0">
-        <div className="font-medium text-sm truncate">{event.summary}</div>
+        <div className="truncate text-sm font-medium">{event.summary}</div>
         <div className="text-xs text-muted-foreground">
           {isAllDay(event.start)
             ? formatShortDate(event.start)
