@@ -160,8 +160,13 @@ export function WeekTimeGrid({
     const viewportRight = el.scrollLeft + el.clientWidth
 
     if (columnLeft < viewportLeft - 1 || columnRight > viewportRight + 1) {
+      const activeDay = currentDays[idx]
+      const weekStartKey = formatDateKey(startOfWeek(activeDay.date, { weekStartsOn: 1 }))
+      const mondayIdx = currentDays.findIndex((d) => d.dateKey === weekStartKey)
+      const targetIdx = mondayIdx !== -1 ? mondayIdx : idx
+
       suppressScrollTracking()
-      el.scrollTo({ left: idx * currentDayWidth, behavior: "smooth" })
+      el.scrollTo({ left: targetIdx * currentDayWidth, behavior: "smooth" })
     }
   }, [activeDateKey, scrollContainerRef])
 
