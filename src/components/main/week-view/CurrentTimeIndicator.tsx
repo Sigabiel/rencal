@@ -3,16 +3,23 @@ import { useEffect, useState } from "react"
 
 import { useSettings } from "@/contexts/SettingsContext"
 
+import { useLocalTzid } from "@/hooks/useLocalTzid"
+import { nowLocalDate } from "@/lib/event-time"
+
 export function CurrentTimeIndicator() {
   const { timeFormat } = useSettings()
-  const [now, setNow] = useState(() => new Date())
+
+  useLocalTzid()
+  const [, tick] = useState(0)
 
   // The colon blinks via CSS, so we only need to tick state once per minute to
   // reposition the indicator and update the displayed h:mm.
   useEffect(() => {
-    const interval = setInterval(() => setNow(new Date()), 60_000)
+    const interval = setInterval(() => tick((t) => t + 1), 60_000)
     return () => clearInterval(interval)
   }, [])
+
+  const now = nowLocalDate()
 
   const currentMinutes = now.getHours() * 60 + now.getMinutes()
   const timeIndicatorTopPercent = (currentMinutes / 1440) * 100
