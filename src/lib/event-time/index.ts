@@ -54,7 +54,6 @@ export {
   isAllDay,
   isSameDay,
   localDateInViewerZone,
-  toInteropDate,
   toViewerZonedDateTime,
 } from "./projections"
 export {

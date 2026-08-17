@@ -55,15 +55,6 @@ export function dateInViewerZone(et: EventTime): Temporal.PlainDate {
 }
 
 /**
- * A JS Date snapshot for DOM and third-party APIs. This is intentionally named
- * as an interop projection because all-day and floating values do not have an
- * inherent UTC instant.
- */
-export function toInteropDate(et: EventTime): Date {
-  return new Date(instantForOrdering(et).epochMilliseconds)
-}
-
-/**
  * The viewer-local calendar day as a local-midnight day-key Date, for date-fns
  * date formatting and day-based navigation. Formatting the raw interop instant
  * instead would render in the webview's zone, which is fixed at launch and

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest"
 
-import { toInteropDate } from "@/lib/event-time"
 import { parseEventText } from "@/lib/magic-parser"
 
 describe("parseEventText", () => {
@@ -15,17 +14,11 @@ describe("parseEventText", () => {
 
     expect(result.start).not.toBeNull()
     expect(result.start?.kind).toBe("date")
-    const startDate = result.start && toInteropDate(result.start)
-    expect(startDate?.getFullYear()).toBe(2026)
-    expect(startDate?.getMonth()).toBe(5) // June
-    expect(startDate?.getDate()).toBe(15)
+    expect(result.start?.value.toString()).toBe("2026-06-15")
 
-    // End is exclusive (iCal convention): June 18 inclusive → June 19 00:00
+    // End is exclusive (iCal convention): June 18 inclusive → June 19
     expect(result.end).not.toBeNull()
     expect(result.end?.kind).toBe("date")
-    const endDate = result.end && toInteropDate(result.end)
-    expect(endDate?.getFullYear()).toBe(2026)
-    expect(endDate?.getMonth()).toBe(5) // June
-    expect(endDate?.getDate()).toBe(19)
+    expect(result.end?.value.toString()).toBe("2026-06-19")
   })
 })
