@@ -1,5 +1,6 @@
+import { Temporal } from "@js-temporal/polyfill"
+
 import type { MonthDay } from "@/hooks/cal-events/useMonthGrid"
-import { formatDateKey } from "@/lib/event-time"
 
 /** The slice of a tanstack-virtual item that pickActiveMonth needs. */
 export type ActiveMonthVirtualItem = {
@@ -9,8 +10,8 @@ export type ActiveMonthVirtualItem = {
   size: number
 }
 
-function monthKey(date: Date): string {
-  return `${date.getFullYear()}-${date.getMonth()}`
+function monthKey(date: Temporal.PlainDate): string {
+  return date.toString().slice(0, 7)
 }
 
 /**
@@ -29,20 +30,20 @@ export function pickActiveMonth({
   weeks,
   viewTop,
   viewBottom,
-  activeDateKey,
+  activeDate,
   direction,
 }: {
   virtualItems: ActiveMonthVirtualItem[]
   weeks: MonthDay[][]
   viewTop: number
   viewBottom: number
-  activeDateKey: string
+  activeDate: Temporal.PlainDate
   direction: "up" | "down"
-}): Date | null {
+}): Temporal.PlainDate | null {
   // Fractional visible area per month, plus each month's 1st when it's on screen. We only
   // commit to a month once its 1st is visible, so both scroll directions land on day 1.
   const monthArea = new Map<string, number>()
-  const monthFirstDay = new Map<string, Date>()
+  const monthFirstDay = new Map<string, Temporal.PlainDate>()
 
   for (const item of virtualItems) {
     const top = Math.max(item.start, viewTop)
@@ -54,12 +55,12 @@ export function pickActiveMonth({
     for (const day of week) {
       const key = monthKey(day.date)
       monthArea.set(key, (monthArea.get(key) ?? 0) + fraction)
-      if (day.date.getDate() === 1) monthFirstDay.set(key, day.date)
+      if (day.date.day === 1) monthFirstDay.set(key, day.date)
     }
   }
 
   // Most-visible month, staying on the active month unless another is strictly larger.
-  const activeKey = `${activeDateKey.slice(0, 4)}-${Number(activeDateKey.slice(5, 7)) - 1}`
+  const activeKey = monthKey(activeDate)
   let bestKey = activeKey
   let bestArea = monthArea.get(activeKey) ?? 0
   for (const [key, area] of monthArea) {
@@ -74,12 +75,12 @@ export function pickActiveMonth({
   if (!target) return null
 
   // Don't promote a half-clipped 1st-of-month row, and don't move against the scroll.
-  const targetKey = formatDateKey(target)
-  if (direction === "up" && targetKey > activeDateKey) return null
-  if (direction === "down" && targetKey < activeDateKey) return null
+  const targetComparison = Temporal.PlainDate.compare(target, activeDate)
+  if (direction === "up" && targetComparison > 0) return null
+  if (direction === "down" && targetComparison < 0) return null
 
   const targetItem = virtualItems.find((item) =>
-    weeks[item.index]?.some((day) => day.dateKey === targetKey),
+    weeks[item.index]?.some((day) => day.date.equals(target)),
   )
   if (!targetItem || targetItem.start < viewTop || targetItem.end > viewBottom) return null
 

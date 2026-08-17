@@ -1,3 +1,4 @@
+import { Temporal } from "@js-temporal/polyfill"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import {
   RefObject,
@@ -22,15 +23,13 @@ import { pickActiveMonth } from "./pickActiveMonth"
 const debugMonthScroll = createDebugLogger("month-scroll")
 
 const DEFAULT_ROW_HEIGHT = 150
-export const LANE_HEIGHT = 20
-export const LANE_GAP = 3
 
 export function MonthGrid({
   weeks,
   weekLayouts,
   activeEventKey,
   selectedEventKey,
-  activeDateKey,
+  activeDate,
   anchorWeekIndex,
   scrollRef,
   isNavigating,
@@ -44,16 +43,18 @@ export function MonthGrid({
   weekLayouts: WeekLayout[]
   activeEventKey: string | null
   selectedEventKey: string | null
-  activeDateKey: string
+  activeDate: Temporal.PlainDate
   anchorWeekIndex: number
   scrollRef: RefObject<HTMLDivElement | null>
   isNavigating: () => boolean
-  onDayClick: (date: Date) => void
+  onDayClick: (date: Temporal.PlainDate) => void
   onEventClick: (eventKey: string) => void
-  onScrollMonthChange: (date: Date) => void
+  onScrollMonthChange: (date: Temporal.PlainDate) => void
   draftEvent: CalendarEvent | null
   dimmed: boolean
 }) {
+  const activeDateKey = activeDate.toString()
+
   // Each day cell is a square: row height tracks the column width
   const [rowHeight, setRowHeight] = useState(DEFAULT_ROW_HEIGHT)
 
@@ -213,7 +214,7 @@ export function MonthGrid({
       weeks,
       viewTop,
       viewBottom,
-      activeDateKey,
+      activeDate,
       direction,
     })
 

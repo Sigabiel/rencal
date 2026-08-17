@@ -1,24 +1,14 @@
-import { startOfDay } from "date-fns"
 import { useMemo } from "react"
 
 import type { Calendar } from "@/rpc/bindings"
 
 import type { CalendarEvent } from "@/lib/cal-events"
 import { getCalendarColor } from "@/lib/calendar-styles"
+import { epochDay } from "@/lib/event-time"
 import { isSpanning } from "@/lib/event-utils"
-import { daysDiff, MS_PER_DAY } from "@/lib/time"
 
+import { assignAllDayLanes, buildAllDaySpan, type AllDayLaneItem } from "./all-day-lanes"
 import type { MonthDay } from "./useMonthGrid"
-
-export type AllDayLaneItem = {
-  event: CalendarEvent
-  calendarColor: string | null
-  startCol: number // 1-based CSS grid-column-start
-  endCol: number // 1-based CSS grid-column-end (exclusive)
-  lane: number
-  isStart: boolean
-  isEnd: boolean
-}
 
 export type TimedEventItem = {
   event: CalendarEvent
@@ -45,50 +35,32 @@ export function useMonthEventLayout(
     }
 
     return weeks.map((weekDays) => {
-      const weekStartMs = startOfDay(weekDays[0].date).getTime()
-      const weekEndDayMs = startOfDay(weekDays[6].date).getTime()
-      const weekExclEndMs = weekEndDayMs + MS_PER_DAY
+      const weekStartDay = epochDay(weekDays[0].date)
+      const weekEndDay = epochDay(weekDays[6].date)
+      const weekExclEndDay = weekEndDay + 1
 
       const allDayItems: AllDayLaneItem[] = []
       const timedByCol: TimedEventItem[][] = Array.from({ length: 7 }, () => [])
 
       for (const event of events) {
-        const { firstDayMs, lastDayMs } = event.dateInfo
+        const { firstDay } = event.dateInfo
         const calendar = calMap.get(event.calendar_slug)
+        const calendarColor = getCalendarColor(calendar)
 
         if (isSpanning(event)) {
-          // Check overlap: event [first, last] vs week [weekStart, weekEndDay]
-          if (firstDayMs > weekEndDayMs || lastDayMs < weekStartMs) {
-            continue
-          }
-
-          // Clamp to week bounds
-          const clampedFirstMs = firstDayMs < weekStartMs ? weekStartMs : firstDayMs
-          const clampedLastMs = lastDayMs > weekEndDayMs ? weekEndDayMs : lastDayMs
-
-          const startCol = daysDiff(clampedFirstMs, weekStartMs) + 1
-          const endCol = daysDiff(clampedLastMs, weekStartMs) + 2
-
-          allDayItems.push({
-            event,
-            calendarColor: getCalendarColor(calendar),
-            startCol,
-            endCol,
-            lane: 0,
-            isStart: firstDayMs >= weekStartMs,
-            isEnd: lastDayMs <= weekEndDayMs,
-          })
+          const item = buildAllDaySpan(event, weekStartDay, weekEndDay, calendarColor)
+          if (item) allDayItems.push(item)
         } else {
           // Single-day timed event
-          if (firstDayMs < weekStartMs || firstDayMs >= weekExclEndMs) {
+          if (firstDay < weekStartDay || firstDay >= weekExclEndDay) {
             continue
           }
 
-          const colIndex = daysDiff(firstDayMs, weekStartMs)
+          const colIndex = firstDay - weekStartDay
           if (colIndex >= 0 && colIndex < 7) {
             timedByCol[colIndex].push({
               event,
-              color: getCalendarColor(calendar),
+              color: calendarColor,
               eventColor: event.color,
             })
           }
@@ -100,39 +72,7 @@ export function useMonthEventLayout(
         col.sort((a, b) => a.event.dateInfo.startMs - b.event.dateInfo.startMs)
       }
 
-      // Sort all-day items: wider spans first, then earlier start
-      allDayItems.sort((a, b) => {
-        const spanDiff = b.endCol - b.startCol - (a.endCol - a.startCol)
-        if (spanDiff !== 0) return spanDiff
-        return a.startCol - b.startCol
-      })
-
-      // Greedy lane assignment
-      const laneOccupied: boolean[][] = []
-      let maxLane = -1
-
-      for (const item of allDayItems) {
-        let lane = 0
-        while (true) {
-          if (!laneOccupied[lane]) laneOccupied[lane] = Array(7).fill(false) as boolean[]
-          let fits = true
-          for (let c = item.startCol - 1; c < item.endCol - 1; c++) {
-            if (laneOccupied[lane][c]) {
-              fits = false
-              break
-            }
-          }
-          if (fits) break
-          lane++
-        }
-
-        if (!laneOccupied[lane]) laneOccupied[lane] = Array(7).fill(false) as boolean[]
-        for (let c = item.startCol - 1; c < item.endCol - 1; c++) {
-          laneOccupied[lane][c] = true
-        }
-        item.lane = lane
-        maxLane = Math.max(maxLane, lane)
-      }
+      const maxLane = assignAllDayLanes(allDayItems, 7)
 
       return { allDayItems, maxLane, timedByCol }
     })

@@ -2,8 +2,8 @@ import { Temporal } from "@js-temporal/polyfill"
 
 import { allDayDate } from "./constructors"
 import { addDays, addMinutes, dateInEventZone, withEventDate, withWallclockTime } from "./edit"
-import { startOfDayMs } from "./layout"
-import { getLocalTzid } from "./local-zone"
+import { dayOf } from "./layout"
+import { getViewerTzid } from "./local-zone"
 import {
   dateInViewerZone,
   instantForOrdering,
@@ -17,16 +17,19 @@ import type { EventTime, EventTimeRange } from "./types"
  * least one day after start's day.
  */
 export function normalizeAllDayRange(start: EventTime, end: EventTime): EventTimeRange {
-  const needsBump = startOfDayMs(end) <= startOfDayMs(start)
+  const needsBump = dayOf(end) <= dayOf(start)
   return { start, end: needsBump ? addDays(start, 1) : end }
 }
 
 /**
- * The viewer-local date keys (YYYY-MM-DD) this event occupies. The end is
+ * The viewer-local days this event occupies. The end is
  * exclusive, so a timed event ending exactly at midnight does not occupy that
  * new day, and an all-day event stops before its DTEND date.
  */
-export function* enumerateLocalDateKeys(start: EventTime, end: EventTime): Generator<string> {
+export function* enumerateLocalDays(
+  start: EventTime,
+  end: EventTime,
+): Generator<Temporal.PlainDate> {
   const firstDate = dateInViewerZone(start)
   let lastDate = dateInViewerZone(end)
   const endIsExclusiveDate =
@@ -42,7 +45,7 @@ export function* enumerateLocalDateKeys(start: EventTime, end: EventTime): Gener
 
   let current = firstDate
   while (Temporal.PlainDate.compare(current, lastDate) <= 0) {
-    yield current.toString()
+    yield current
     current = current.add({ days: 1 })
   }
 }
@@ -51,14 +54,13 @@ export function* enumerateLocalDateKeys(start: EventTime, end: EventTime): Gener
  * Whether the event covers the given viewer-local day from midnight to
  * midnight. All-day events cover every day they occupy; a timed event covers
  * a day fully only when its span passes over that day without starting or
- * ending mid-day. Assumes dateKey is a day the event occupies (as enumerated
- * by enumerateLocalDateKeys).
+ * ending mid-day. Assumes day is occupied by the event (as enumerated by
+ * enumerateLocalDays).
  */
-export function coversFullDay(start: EventTime, end: EventTime, dateKey: string): boolean {
+export function coversFullDay(start: EventTime, end: EventTime, day: Temporal.PlainDate): boolean {
   if (isAllDay(start)) return true
 
-  const day = Temporal.PlainDate.from(dateKey)
-  const tzid = getLocalTzid()
+  const tzid = getViewerTzid()
   const dayStartMs = day.toZonedDateTime(tzid).epochMilliseconds
   const nextDayStartMs = day.add({ days: 1 }).toZonedDateTime(tzid).epochMilliseconds
 

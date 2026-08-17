@@ -1,31 +1,28 @@
+import { Temporal } from "@js-temporal/polyfill"
 import { useMemo, useRef } from "react"
 
 import { CalendarEvent } from "@/lib/cal-events"
-import { enumerateLocalDateKeys } from "@/lib/event-time"
-
-function dateKeyToJsDate(key: string): Date {
-  const [y, m, d] = key.split("-").map(Number)
-  return new Date(y, m - 1, d)
-}
+import { enumerateLocalDays } from "@/lib/event-time"
 
 export function useGroupedEvents({ events }: { events: CalendarEvent[] }) {
   const eventsByDate = useMemo(() => {
-    const grouped = new Map<string, CalendarEvent[]>()
+    const grouped = new Map<string, { date: Temporal.PlainDate; events: CalendarEvent[] }>()
 
     for (const event of events) {
-      for (const dateKey of enumerateLocalDateKeys(event.start, event.end)) {
+      for (const date of enumerateLocalDays(event.start, event.end)) {
+        const dateKey = date.toString()
         const existing = grouped.get(dateKey)
-        if (existing) existing.push(event)
-        else grouped.set(dateKey, [event])
+        if (existing) existing.events.push(event)
+        else grouped.set(dateKey, { date, events: [event] })
       }
     }
 
     return Array.from(grouped.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([dateKey, dayEvents]) => ({
+      .sort(([, a], [, b]) => Temporal.PlainDate.compare(a.date, b.date))
+      .map(([dateKey, { date, events }]) => ({
         dateKey,
-        date: dateKeyToJsDate(dateKey),
-        events: dayEvents,
+        date,
+        events,
       }))
   }, [events])
 

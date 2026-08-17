@@ -1,15 +1,29 @@
+import { Temporal } from "@js-temporal/polyfill"
 import * as chrono from "chrono-node"
-import { addDays, addMinutes, startOfDay } from "date-fns"
 
 import type { Recurrence } from "@/lib/cal-events"
 import {
+  addMinutes,
+  allDayDate,
   DEFAULT_DURATION_MINS,
   fromDate,
-  getLocalTzid,
-  nowLocalDate,
-  plainDate,
+  getViewerTzid,
   type EventTime,
 } from "@/lib/event-time"
+import { jsDateToPlainDate } from "@/lib/event-time/js-date"
+
+function currentViewerWallclockDate(): Date {
+  const now = Temporal.Now.zonedDateTimeISO(getViewerTzid())
+  return new Date(
+    now.year,
+    now.month - 1,
+    now.day,
+    now.hour,
+    now.minute,
+    now.second,
+    now.millisecond,
+  )
+}
 
 interface ParsedEventSegments {
   summary: string
@@ -115,7 +129,7 @@ export interface TextSegment {
  */
 export function segmentEventText(
   text: string,
-  referenceDate: Date = nowLocalDate(),
+  referenceDate: Date = currentViewerWallclockDate(),
 ): TextSegment[] {
   if (!text.trim()) return [{ text, parsed: false }]
 
@@ -184,7 +198,7 @@ export function segmentEventText(
 
 export function parseEventText(
   text: string,
-  referenceDate: Date = nowLocalDate(),
+  referenceDate: Date = currentViewerWallclockDate(),
 ): ParsedEventSegments {
   const recurrenceResult = parseRecurrence(text)
 
@@ -216,25 +230,23 @@ export function parseEventText(
   const { summary: finalSummary, location } = parseLocation(summary)
 
   const allDay = !result.start.isCertain("hour")
+  const tzid = getViewerTzid()
 
-  const startDate = allDay ? startOfDay(result.start.date()) : result.start.date()
-
-  const endDate = allDay
-    ? startOfDay(addDays(result.end ? result.end.date() : result.start.date(), 1))
-    : result.end
-      ? result.end.date()
-      : addMinutes(startDate, DEFAULT_DURATION_MINS)
-
-  // Convert to EventTime: all-day → PlainDate, timed → ZonedDateTime
-  // anchored in the viewer's local zone (chrono produces local-zone Dates).
-  const tzid = getLocalTzid()
-  const toEt = (d: Date): EventTime =>
-    allDay ? plainDate(d.getFullYear(), d.getMonth() + 1, d.getDate()) : fromDate(d, tzid)
+  let start: EventTime, end: EventTime
+  if (allDay) {
+    const startDate = jsDateToPlainDate(result.start.date())
+    const endDate = (result.end ? jsDateToPlainDate(result.end.date()) : startDate).add({ days: 1 })
+    start = allDayDate(startDate)
+    end = allDayDate(endDate)
+  } else {
+    start = fromDate(result.start.date(), tzid)
+    end = result.end ? fromDate(result.end.date(), tzid) : addMinutes(start, DEFAULT_DURATION_MINS)
+  }
 
   return {
     summary: finalSummary,
-    start: toEt(startDate),
-    end: toEt(endDate),
+    start,
+    end,
     recurrence,
     location,
     chronoMatchText: result.text,

@@ -15,25 +15,25 @@
  */
 export type { EventDateInfo, EventTime, EventTimeRange } from "./types"
 
-export { DEFAULT_DURATION_MINS } from "./constants"
 export {
-  allDayDate,
-  allDayFromLocalDate,
-  fromDate,
-  nowLocalDate,
-  nowZoned,
-  plainDate,
-  todayLocalDate,
-} from "./constructors"
+  DAY_MINUTES,
+  DEFAULT_DURATION_MINS,
+  HOUR_MINUTES,
+  MONTH_MINUTES,
+  WEEK_MINUTES,
+} from "./constants"
+export { allDayDate, atTime, fromDate, nowZoned, today } from "./constructors"
+export { dateKeyToPlainDate, epochDay, startOfWeek } from "./day"
 export {
   formatDateKey,
+  formatDayMonth,
   formatLongDate,
+  formatMonth,
   formatShortDate,
   formatTime,
   formatWallclockTime,
+  formatWeekday,
   getRelativeDayLabel,
-  localDateToPlainDate,
-  plainDateToLocalDate,
 } from "./display"
 export {
   addDays,
@@ -42,24 +42,15 @@ export {
   toAllDay,
   toTimedAtStartOfDay,
   wallclockTime,
-  withEventDate,
   withViewerZone,
-  withWallclockTime,
 } from "./edit"
-export { getLocalTzid, setLocalTzid, subscribeLocalTzid } from "./local-zone"
-export { computeEventDateInfo, getEventDayRange, startOfDayMs } from "./layout"
-export {
-  dateInViewerZone,
-  instantForOrdering,
-  isAllDay,
-  isSameDay,
-  localDateInViewerZone,
-  toViewerZonedDateTime,
-} from "./projections"
+export { getViewerTzid, setViewerTzid, subscribeViewerTzid } from "./local-zone"
+export { computeEventDateInfo } from "./layout"
+export { dateInViewerZone, isAllDay, isSameDay, toViewerZonedDateTime } from "./projections"
 export {
   coversFullDay,
   displayEndDate,
-  enumerateLocalDateKeys,
+  enumerateLocalDays,
   normalizeAllDayRange,
   shouldShowDisplayEndDate,
   withRangeDisplayEndDate,

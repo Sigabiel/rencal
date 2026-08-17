@@ -1,29 +1,51 @@
 import { Temporal } from "@js-temporal/polyfill"
-import { differenceInCalendarDays, format, getYear } from "date-fns"
 
 import type { TimeFormat } from "@/rpc/bindings"
 
-import { allDayFromLocalDate, todayLocalDate } from "./constructors"
-import { getLocalTzid } from "./local-zone"
-import {
-  dateInViewerZone,
-  isAllDay,
-  localDateInViewerZone,
-  toViewerZonedDateTime,
-} from "./projections"
+import { today } from "./constructors"
+import { epochDay } from "./day"
+import { getViewerTzid } from "./local-zone"
+import { dateInViewerZone, isAllDay, toViewerZonedDateTime } from "./projections"
 import type { EventTime } from "./types"
 
+type DatePartStyle = "short" | "long"
+
+const weekdayFormatters: Record<DatePartStyle, Intl.DateTimeFormat> = {
+  short: new Intl.DateTimeFormat("en-GB", { weekday: "short", timeZone: "UTC" }),
+  long: new Intl.DateTimeFormat("en-GB", { weekday: "long", timeZone: "UTC" }),
+}
+
+const monthFormatters: Record<DatePartStyle, Intl.DateTimeFormat> = {
+  short: new Intl.DateTimeFormat("en-GB", { month: "short", timeZone: "UTC" }),
+  long: new Intl.DateTimeFormat("en-GB", { month: "long", timeZone: "UTC" }),
+}
+
+function epochMilliseconds(date: Temporal.PlainDate): number {
+  return date.toZonedDateTime("UTC").epochMilliseconds
+}
+
+function yearSuffix(date: Temporal.PlainDate): string {
+  return date.year !== today().year ? ` ${date.year}` : ""
+}
+
 /** "YYYY-MM-DD" in the viewer's local zone. Used as a stable grouping key. */
-export function formatDateKey(et: EventTime | Date): string {
-  if (et instanceof Date) return dateInViewerZone(allDayFromLocalDate(et)).toString()
-  return dateInViewerZone(et).toString()
+export function formatDateKey(value: EventTime | Temporal.PlainDate): string {
+  return (value instanceof Temporal.PlainDate ? value : dateInViewerZone(value)).toString()
+}
+
+export function formatWeekday(date: Temporal.PlainDate, style: DatePartStyle): string {
+  return weekdayFormatters[style].format(epochMilliseconds(date))
+}
+
+export function formatMonth(date: Temporal.PlainDate, style: DatePartStyle): string {
+  return monthFormatters[style].format(epochMilliseconds(date))
 }
 
 let timeFormatters: Partial<Record<TimeFormat, Intl.DateTimeFormat>> = {}
 let timeFormattersTzid: string | undefined
 
 function getTimeFormatter(timeFormat: TimeFormat): Intl.DateTimeFormat {
-  const tzid = getLocalTzid()
+  const tzid = getViewerTzid()
   // Formatters bake in the timeZone, so drop the cache when the viewer's zone changes.
   if (timeFormattersTzid !== tzid) {
     timeFormatters = {}
@@ -62,33 +84,28 @@ export function formatWallclockTime(hour: number, minute: number, timeFormat: Ti
 }
 
 /** "Mon, 28 Apr" or "Mon, 28 Apr 2027" if not the current year. */
-export function formatShortDate(et: EventTime | Date): string {
-  const d = et instanceof Date ? et : localDateInViewerZone(et)
-  const pattern = getYear(d) !== getYear(todayLocalDate()) ? "EEE, d MMM yyyy" : "EEE, d MMM"
-  return format(d, pattern)
+export function formatShortDate(value: EventTime | Temporal.PlainDate): string {
+  const date = value instanceof Temporal.PlainDate ? value : dateInViewerZone(value)
+  return `${formatWeekday(date, "short")}, ${date.day} ${formatMonth(date, "short")}${yearSuffix(date)}`
 }
 
 /** "Thursday, 5 November" (adds the year when not the current year). */
-export function formatLongDate(et: EventTime | Date): string {
-  const d = et instanceof Date ? et : localDateInViewerZone(et)
-  const pattern = getYear(d) !== getYear(todayLocalDate()) ? "EEEE, d MMMM yyyy" : "EEEE, d MMMM"
-  return format(d, pattern)
+export function formatLongDate(value: EventTime | Temporal.PlainDate): string {
+  const date = value instanceof Temporal.PlainDate ? value : dateInViewerZone(value)
+  return `${formatWeekday(date, "long")}, ${date.day} ${formatMonth(date, "long")}${yearSuffix(date)}`
+}
+
+/** "28 Apr" or "28 Apr 2027" if not the current year. */
+export function formatDayMonth(date: Temporal.PlainDate): string {
+  return `${date.day} ${formatMonth(date, "short")}${yearSuffix(date)}`
 }
 
 /** "Today" / "Tomorrow" / "Yesterday" / weekday name. */
-export function getRelativeDayLabel(et: EventTime | Date): string {
-  const d = et instanceof Date ? et : localDateInViewerZone(et)
-  const diffDays = differenceInCalendarDays(d, todayLocalDate())
+export function getRelativeDayLabel(value: EventTime | Temporal.PlainDate): string {
+  const date = value instanceof Temporal.PlainDate ? value : dateInViewerZone(value)
+  const diffDays = epochDay(date) - epochDay(today())
   if (diffDays === 0) return "Today"
   if (diffDays === 1) return "Tomorrow"
   if (diffDays === -1) return "Yesterday"
-  return format(d, "EEEE")
-}
-
-export function plainDateToLocalDate(pd: Temporal.PlainDate): Date {
-  return new Date(pd.year, pd.month - 1, pd.day)
-}
-
-export function localDateToPlainDate(d: Date): Temporal.PlainDate {
-  return new Temporal.PlainDate(d.getFullYear(), d.getMonth() + 1, d.getDate())
+  return formatWeekday(date, "long")
 }

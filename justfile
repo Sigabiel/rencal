@@ -49,6 +49,7 @@ check:
 # Check TypeScript types only
 typecheck:
   pnpm typecheck
+  pnpm find:unused-exports
 
 # Run frontend tests
 test:

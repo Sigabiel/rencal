@@ -1,4 +1,3 @@
-import { format } from "date-fns"
 import type { MouseEvent } from "react"
 import { memo, useMemo } from "react"
 
@@ -12,7 +11,13 @@ import { CalendarEvent, eventKey } from "@/lib/cal-events"
 import { getCalendarColor } from "@/lib/calendar-styles"
 import { setEventAnchor } from "@/lib/event-anchor"
 import { getEventBlockColors } from "@/lib/event-styles"
-import { formatShortDate, formatTime, isSameDay, localDateInViewerZone } from "@/lib/event-time"
+import {
+  dateInViewerZone,
+  formatMonth,
+  formatShortDate,
+  formatTime,
+  isSameDay,
+} from "@/lib/event-time"
 
 export const BoardCard = memo(function BoardCard({
   event,
@@ -27,6 +32,11 @@ export const BoardCard = memo(function BoardCard({
   const calendarColor = getCalendarColor(calendarBySlug.get(event.calendar_slug))
   const colors = getEventBlockColors({ calendarColor, eventColor: event.color })
   const { toggleActiveEventKey } = useCalEvents()
+
+  const formatRangeDate = (date: CalendarEvent["start"]): string => {
+    const plainDate = dateInViewerZone(date)
+    return `${formatMonth(plainDate, "short")} ${plainDate.day},`
+  }
 
   const handleClick = (e: MouseEvent<HTMLDivElement>) => {
     e.stopPropagation()
@@ -61,7 +71,7 @@ export const BoardCard = memo(function BoardCard({
             <div className="text-muted-foreground numerical text-xs h-4">
               {isSameDay(event.start, event.end)
                 ? `${formatTime(event.start, timeFormat)} - ${formatTime(event.end, timeFormat)}`
-                : `${format(localDateInViewerZone(event.start), "MMM d,")} ${formatTime(event.start, timeFormat)} - ${format(localDateInViewerZone(event.end), "MMM d,")} ${formatTime(event.end, timeFormat)}`}
+                : `${formatRangeDate(event.start)} ${formatTime(event.start, timeFormat)} - ${formatRangeDate(event.end)} ${formatTime(event.end, timeFormat)}`}
             </div>
           )}
 

@@ -1,43 +1,53 @@
-import { addDays, isSameDay, startOfWeek } from "date-fns"
+import { Temporal } from "@js-temporal/polyfill"
 import { useMemo } from "react"
 
 import { useToday } from "@/hooks/useToday"
-import { formatDateKey } from "@/lib/event-time"
+import { formatDateKey, startOfWeek } from "@/lib/event-time"
 
 export type MonthDay = {
-  date: Date
+  date: Temporal.PlainDate
   dateKey: string
   isToday: boolean
   isWeekend: boolean
 }
 
+export function buildDay(date: Temporal.PlainDate, today: Temporal.PlainDate): MonthDay {
+  return {
+    date,
+    dateKey: formatDateKey(date),
+    isToday: date.equals(today),
+    isWeekend: date.dayOfWeek === 6 || date.dayOfWeek === 7,
+  }
+}
+
+export function monthGridBounds(
+  rangeStart: Temporal.PlainDate,
+  rangeEnd: Temporal.PlainDate,
+): { gridStart: Temporal.PlainDate; gridEnd: Temporal.PlainDate } {
+  return { gridStart: startOfWeek(rangeStart), gridEnd: startOfWeek(rangeEnd) }
+}
+
 /**
  * Generates weeks covering the range [rangeStart, rangeEnd).
- * Both should be the 1st of a month (e.g. from startOfMonth).
+ * Both should be the 1st of a month (i.e. `.with({ day: 1 })`).
  */
-export function useMonthGrid(rangeStart: Date, rangeEnd: Date) {
+export function useMonthGrid(rangeStart: Temporal.PlainDate, rangeEnd: Temporal.PlainDate) {
   const today = useToday()
 
   return useMemo(() => {
-    const gridStart = startOfWeek(rangeStart, { weekStartsOn: 1 })
-    const gridEnd = startOfWeek(rangeEnd, { weekStartsOn: 1 })
+    const { gridStart, gridEnd } = monthGridBounds(rangeStart, rangeEnd)
 
     const weeks: MonthDay[][] = []
     let current = gridStart
 
-    while (current < gridEnd) {
+    while (Temporal.PlainDate.compare(current, gridEnd) < 0) {
       const week: MonthDay[] = []
       for (let d = 0; d < 7; d++) {
-        const date = addDays(current, d)
-        week.push({
-          date,
-          dateKey: formatDateKey(date),
-          isToday: isSameDay(date, today),
-          isWeekend: date.getDay() === 0 || date.getDay() === 6,
-        })
+        const date = current.add({ days: d })
+        week.push(buildDay(date, today))
       }
       weeks.push(week)
-      current = addDays(current, 7)
+      current = current.add({ days: 7 })
     }
 
     return weeks
