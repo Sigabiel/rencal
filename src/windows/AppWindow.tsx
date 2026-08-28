@@ -50,14 +50,13 @@ function App() {
   const { collapsed, toggleCollapsed } = useSidebarCollapse()
 
   const isMd = useBreakpoint("md")
-  const sidebarCollapsed = collapsed && isMd
 
   return (
     <main className="flex h-screen overflow-clip">
       <GlobalShortcuts onChangeCalendarView={setCalendarView} onToggleSidebar={toggleCollapsed} />
       <DragRegion className="absolute h-4! w-full" />
 
-      <Sidebar collapsed={sidebarCollapsed} />
+      <Sidebar collapsed={collapsed} />
 
       {isMd && <Main calendarView={calendarView} onChangeCalendarView={setCalendarView} />}
 
